@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # In[1]:
@@ -21,16 +21,16 @@ from decimal import Decimal
 from PIL import Image
 
 
-# In[2]:
+# In[6]:
 
 
-LARGE_FONT=('Verdana', 20)
+LARGE_FONT=('Verdana', 16)
 color='blue'
-small_font=('Verdana', 12)
-number_font=('Verdana', 8)
+small_font=('Verdana', 10)
+number_font=('Verdana', 6)
 
 
-# In[3]:
+# In[7]:
 
 
 def elliptic_bandpass(order, rp, rs, lowcut, highcut):
@@ -77,7 +77,7 @@ spr_channel_names=['fp1','fp2','f7','f3','fz','f4','f8','A1','T3','C3','Cz','C4'
                   ,'O1','O2']
 
 
-# In[44]:
+# In[18]:
 
 
 class Qeeg(tk.Tk):
@@ -193,7 +193,7 @@ class StartPage(tk.Frame):
         
         if br==0:
             self.filepath=tkFileDialog.askdirectory()
-            arr= glob.glob(self.filepath+'/*')
+            arr= glob.glob(self.filepath+'/*/')
             arr.sort()
             self.dirs={1:'N.A.', 2:'N.A.', 7:'N.A.', 30:'N.A.', 90:'N.A.'}
             if arr!=None:
@@ -525,6 +525,10 @@ class QeegPage(tk.Frame):
             inFileLbl.grid(row=r1+3, column=0, sticky='WE', padx=0, pady=2)
             inFileLbl = tk.Label(dayframe, text='Delta/Alpha\nRatio')
             inFileLbl.grid(row=r1+6, column=0, sticky='WE', padx=0, pady=2)
+            inFileLbl = tk.Label(dayframe, text='Pre')
+            inFileLbl.grid(row=r1+8, column=2, sticky='WE', padx=0, pady=2)
+            inFileLbl = tk.Label(dayframe, text='Post')
+            inFileLbl.grid(row=r1+8, column=4, sticky='WE', padx=0, pady=2)
             inFileLbl = tk.Label(dayframe, text='Brain\nSymmetry\nIndex')
             inFileLbl.grid(row=r1+10, column=0, sticky='WE', padx=0, pady=2)
             
@@ -543,7 +547,7 @@ class QeegPage(tk.Frame):
         for i in key:
             if controller.dirs[i]!='N.A.':
                 keys.append(i)
-                print_keys.append('Day'+str(i))
+                print_keys.append('Day '+str(i))
         bsifile= np.load(controller.filepath+'/qeeg/bsi.npy')
         
         mean_alpha_a_right_pre=np.zeros(5)
@@ -568,6 +572,7 @@ class QeegPage(tk.Frame):
         if ab==1:
             activity='b'
         j=0
+        avg_bsi=np.zeros(10)
         for i in range(0, len(keys)):
             if keys[i]==1:
                 j=0
@@ -598,9 +603,15 @@ class QeegPage(tk.Frame):
             
             ##bsi
             plt.rcParams["figure.figsize"] = [25,16]
+            plt.rcParams.update({'font.size': 12})
             bsi= bsifile[i]
+            avg_bsi[2*j]= np.average(np.array( bsi[2*ab]))
+            avg_bsi[2*j+1]= np.average(np.array( bsi[2*ab+1]))
             plt.plot(np.arange(len(bsi[2*ab]))*512.0/256,np.array( bsi[2*ab]),'-r', label='pre exercise')#2*1=2(b),2*0=0(a)
             plt.plot(np.arange(len(bsi[2*ab+1]))*512.0/256,np.array( bsi[2*ab+1]),'-b', label='post exercise')
+            plt.xlabel('Time')
+            plt.ylabel('BSI')
+            plt.title('Brain Symmetry Index')
             plt.legend(loc='upper right')#2*1+1=3(bb),2*0+1=0(aa)
             plt.savefig(controller.filepath+'/qeeg/bsi_DAY_'+str(keys[i])+activity+'_.png')
             plt.close()
@@ -615,6 +626,10 @@ class QeegPage(tk.Frame):
             inFileLbl.grid(row=10, column=2, sticky='WE', padx=0, pady=2)
             inFileLbl = tk.Label(dayframe, text='%.1f' % mean_beta_a_right_pre[i],font=number_font)
             inFileLbl.grid(row=14, column=2, sticky='WE', padx=0, pady=2)
+            inFileLbl = tk.Label(dayframe, text='%.2f' % avg_bsi[2*i] ,font=number_font)
+            inFileLbl.grid(row=50, column=2, sticky='WE', padx=0, pady=2)
+            inFileLbl = tk.Label(dayframe, text='%.2f' % avg_bsi[2*i+1] ,font=number_font)
+            inFileLbl.grid(row=50, column=4, sticky='WE', padx=0, pady=2)
             
             inFileLbl = tk.Label(dayframe, text='%.1f' % mean_delta_a_right_post[i], font=number_font)
             inFileLbl.grid(row=3, column=3, sticky='WE', padx=0, pady=2)
@@ -643,23 +658,48 @@ class QeegPage(tk.Frame):
             inFileLbl = tk.Label(dayframe, text='%.1f' % mean_beta_a_left_post[i],font=number_font)
             inFileLbl.grid(row=14, column=5, sticky='WE', padx=0, pady=2)
         
-        
+        keysm=[1, 2, 3, 4, 5]
         plt.rcParams["figure.figsize"] = [25,16]
-        plt.plot(print_keys, np.array(malpost)*np.array(marpre)/(np.array(malpre)*np.array(marpost)))
+        plt.rcParams.update({'font.size': 20})
+        plt.xticks(keysm, print_keys)
+        #plt.bar(keysm, np.array(malpost)*np.array(marpre)/(np.array(malpre)*np.array(marpost)))
+        plt.plot(keysm, np.array(malpost)*np.array(marpre)/(np.array(malpre)*np.array(marpost)))
+        plt.ylabel('Alpha Ratio post vs pre left vs right')
+        plt.xlabel('Day')
+        plt.title('Alpha Ratio')
         plt.savefig(controller.filepath+'/qeeg/Alpha_'+activity+'_left%right_post%pre.png')
         plt.close()
-        plt.plot(print_keys, np.array(mblpost)*np.array(mbrpre)/(np.array(mblpre)*np.array(mbrpost)))
+        plt.xticks(keysm, print_keys)
+        #plt.bar(keysm, np.array(mblpost)*np.array(mbrpre)/(np.array(mblpre)*np.array(mbrpost)))
+        plt.plot(keysm, np.array(mblpost)*np.array(mbrpre)/(np.array(mblpre)*np.array(mbrpost)))
+        plt.ylabel('Beta Ratio post vs pre left vs right')
+        plt.xlabel('Day')
+        plt.title('Beta Ratio')
         plt.savefig(controller.filepath+'/qeeg/Beta_'+activity+'_left%right_post%pre.png')
         plt.close()
-        plt.plot(print_keys, np.array(mdlpost)*np.array(mdrpre)/(np.array(mdlpre)*np.array(mdrpost)))
+        plt.xticks(keysm, print_keys)
+        #plt.bar(keysm, np.array(mdlpost)*np.array(mdrpre)/(np.array(mdlpre)*np.array(mdrpost)))
+        plt.plot(keysm, np.array(mdlpost)*np.array(mdrpre)/(np.array(mdlpre)*np.array(mdrpost)))
+        plt.ylabel('Delta Ratio post vs pre left vs right')
+        plt.xlabel('Day')
+        plt.title('Delta Ratio')
         plt.savefig(controller.filepath+'/qeeg/Delta_'+activity+'_left%right_post%pre.png')
         plt.close()
-        plt.plot(print_keys, np.array(mtlpost)*np.array(mtrpre)/(np.array(mtlpre)*np.array(mtrpost)))
+        plt.xticks(keysm, print_keys)
+        #plt.bar(keysm, np.array(mtlpost)*np.array(mtrpre)/(np.array(mtlpre)*np.array(mtrpost)))
+        plt.plot(keysm, np.array(mtlpost)*np.array(mtrpre)/(np.array(mtlpre)*np.array(mtrpost)))
         plt.savefig(controller.filepath+'/qeeg/Theta_'+activity+'_left%right_post%pre.png')
+        plt.ylabel('Theta Ratio post vs pre left vs right')
+        plt.xlabel('Day')
+        plt.title('Theta Ratio')
         plt.close()
-        plt.plot(print_keys, np.array(mdlpost)*np.array(marpost)/(np.array(mdrpost)*np.array(malpost)),'-b', label='post exercise')
-        plt.plot(print_keys, np.array(mdlpre)*np.array(marpre)/(np.array(mdrpre)*np.array(malpre)),'-r', label='pre exercise')
+        plt.xticks(keysm, print_keys)
+        plt.plot(keysm, np.array(mdlpost)*np.array(marpost)/(np.array(mdrpost)*np.array(malpost)),'-b', label='post exercise')
+        plt.plot(keysm, np.array(mdlpre)*np.array(marpre)/(np.array(mdrpre)*np.array(malpre)),'-r', label='pre exercise')
         plt.legend(loc='upper right')
+        plt.title('Delta/Alpha Ratio')
+        plt.ylabel('Delta/Alpha ratio Left vs Right')
+        plt.xlabel('Day')
         plt.savefig(controller.filepath+'/qeeg/Delta%Alpha_'+activity+'_left%right_post%pre.png')
         plt.close()
         
@@ -801,7 +841,7 @@ class QeegPage(tk.Frame):
         mean_theta_a_left_pre)
 
 
-# In[45]:
+# In[20]:
 
 
 app= Qeeg()
